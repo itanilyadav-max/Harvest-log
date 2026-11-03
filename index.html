@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#059669">
+<title>Oligo Harvest &amp; Waste Scan</title>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{--ink:#10231a;--mut:#62736a;--line:#dfe7e2;--bg:#f3f6f4;--card:#fff;--g:#059669;--gd:#047857;--gl:#d1fae5;--r:#dc2626;--rd:#b91c1c;--rl:#fee2e2;--a:#b45309;--al:#fef3c7;--b:#1d4ed8;--bl:#dbeafe}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,sans-serif;-webkit-text-size-adjust:100%}
+body{padding-bottom:env(safe-area-inset-bottom,0)}
+.hidden{display:none!important}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:16px;width:100%;border:1.5px solid var(--line);border-radius:10px;padding:11px 12px;background:#fff;color:var(--ink);outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--g)}
+label{display:block;font-size:12px;font-weight:600;color:var(--mut);margin-bottom:4px}
+h2{font-size:17px;margin:0;font-weight:800}
+h3{font-size:16px;margin:0;font-weight:800}
+.muted{color:var(--mut)}.small{font-size:12.5px}
+.center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.box{background:var(--card);border-radius:18px;padding:26px;width:100%;max-width:380px;box-shadow:0 8px 30px rgba(16,35,26,.1)}
+.box h1{margin:0 0 4px;font-size:22px;font-weight:800}
+.box .f{margin-top:12px}
+.err{background:var(--rl);color:var(--rd);border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;margin-top:12px}
+
+.top{position:sticky;top:0;z-index:20;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top,0)) 16px 10px}
+.top b{font-size:15px;display:block}.top small{opacity:.65;font-size:11.5px}
+.top button{background:rgba(255,255,255,.12);border:0;color:#fff;padding:8px 12px;border-radius:9px;font-size:12.5px;font-weight:600}
+.tabs{position:sticky;top:calc(52px + env(safe-area-inset-top,0));z-index:19;display:grid;grid-template-columns:1fr 1fr;background:#fff;border-bottom:1px solid var(--line)}
+.tabs button{border:0;background:none;padding:14px 8px;font-size:14.5px;font-weight:700;color:var(--mut);border-bottom:3px solid transparent}
+.tabs button.on{color:var(--gd);border-bottom-color:var(--g)}
+.tabs button.w.on{color:var(--rd);border-bottom-color:var(--r)}
+.badge{display:inline-block;min-width:20px;padding:1px 6px;border-radius:99px;background:var(--a);color:#fff;font-size:11px;margin-left:6px}
+main{max-width:860px;margin:0 auto;padding:14px 14px 80px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+.row{display:flex;gap:8px;align-items:center}.row.between{justify-content:space-between}
+.row>*{min-width:0}
+.mt{margin-top:10px}
+.btn{border:1.5px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;padding:11px 14px;font-weight:700;font-size:14px;white-space:nowrap}
+.btn.pri{background:var(--g);border-color:var(--g);color:#fff}
+.btn.red{background:var(--r);border-color:var(--r);color:#fff}
+.btn.wide{width:100%}
+.btn:disabled{opacity:.55}
+.btn.sm{padding:6px 10px;font-size:12px}
+.cam{width:100%;max-height:300px;border-radius:12px;overflow:hidden;background:#000;margin-top:10px}
+.hint{margin-top:8px;font-size:12.5px;background:var(--al);color:var(--a);padding:8px 10px;border-radius:9px}
+.fb{margin-top:10px;border-radius:11px;padding:11px 13px;font-size:14px;font-weight:700;line-height:1.35}
+.fb.ok{background:var(--gl);color:#065f46}.fb.warn{background:var(--al);color:var(--a)}.fb.err{background:var(--rl);color:var(--rd)}
+.fb small{display:block;font-weight:500;margin-top:2px;opacity:.85}
+.pill{font-size:11.5px;font-weight:700;border-radius:99px;padding:3px 9px;background:var(--gl);color:#065f46;white-space:nowrap}
+.pill.r{background:var(--rl);color:var(--rd)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.chip{display:inline-flex;align-items:center;gap:6px;background:#f0f4f2;border-radius:8px;padding:4px 4px 4px 9px;font-size:12px;font-weight:700;font-family:ui-monospace,Menlo,monospace}
+.chip button{border:0;background:#dfe7e2;border-radius:6px;width:22px;height:22px;font-size:11px;color:var(--mut)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.grid2 .full{grid-column:1/-1}
+.prev{margin-top:10px;background:#f0f4f2;border-radius:10px;padding:9px 11px;font-size:13px;font-weight:600}
+.grp{border-left:5px solid var(--g)}
+.wgrp{border-left:5px solid var(--r)}
+.tw{overflow-x:auto;margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:520px}
+th{text-align:left;font-size:11.5px;color:var(--mut);font-weight:700;padding:8px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 8px;border-bottom:1px solid #eef2ef;vertical-align:top}
+td.n,th.n{text-align:center}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+.stat b{display:block;font-size:19px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stat span{font-size:11.5px;color:var(--mut);font-weight:600}
+.steps{margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--mut);line-height:1.55}
+.modal{position:fixed;inset:0;background:rgba(10,20,15,.6);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal .in{background:#fff;border-radius:18px;padding:20px;width:100%;max-width:420px;max-height:92vh;overflow:auto}
+#toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0));transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 16px;border-radius:12px;font-size:13.5px;font-weight:600;z-index:99;max-width:92vw;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+.empty{text-align:center;color:var(--mut);padding:18px 8px;font-size:13.5px}
+.act{border:0;background:none;color:var(--mut);padding:6px;font-size:14px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:#e6ede9;border-radius:12px;padding:4px;margin-bottom:14px;gap:4px}
+.seg button{border:0;background:none;border-radius:9px;padding:11px 8px;font-weight:700;font-size:14px;color:var(--mut)}
+.seg button.on{background:#fff;color:var(--gd);box-shadow:0 1px 4px rgba(16,35,26,.15)}
+.xrow{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);border-radius:11px;padding:9px 10px;margin-top:8px}
+.xrow .grow{flex:1;min-width:0}
+.xchk{width:22px;height:22px;flex:none;padding:0;accent-color:var(--g)}
+.xqty{width:84px;flex:none;padding:8px;text-align:center}
+.act.d{color:var(--r)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="authView" class="center">
+  <div class="box">
+    <h1><i class="fas fa-seedling" style="color:var(--g)"></i> Harvest &amp; Waste</h1>
+    <div class="muted small">Log in with your production account.</div>
+    <div class="f"><label>Email</label><input id="lgEmail" type="email" autocomplete="username"></div>
+    <div class="f"><label>Password</label><input id="lgPass" type="password" autocomplete="current-password"></div>
+    <div id="lgErr" class="err hidden"></div>
+    <button id="lgBtn" class="btn pri wide mt" style="margin-top:16px">Log in</button>
+  </div>
+</div>
+
+<div id="pendingView" class="center hidden">
+  <div class="box"><h1>Waiting for approval</h1><p class="muted">This account is not approved yet. Ask the admin to approve it, then reopen this page.</p><button class="btn wide" data-act="logout">Log out</button></div>
+</div>
+
+<!-- APP -->
+<div id="appView" class="hidden">
+  <header class="top">
+    <div><b id="farmName">Oligo Farms</b><small id="userEmail"></small></div>
+    <button data-act="logout">Log out</button>
+  </header>
+  <nav class="tabs">
+    <button data-tab="harvest" class="on"><i class="fas fa-box-open"></i> Harvesting <span id="pendBadge" class="badge hidden"></span></button>
+    <button data-tab="waste" class="w"><i class="fas fa-trash-alt"></i> Waste log</button>
+  </nav>
+
+  <main>
+    <!-- ================= HARVESTING ================= -->
+    <section id="tab-harvest">
+      <div class="seg">
+        <button id="hModeScan" class="on" data-act="hMode" data-mode="scan"><i class="fas fa-barcode"></i> Scan trays</button>
+        <button id="hModeManual" data-act="hMode" data-mode="manual"><i class="fas fa-list-check"></i> Select manually</button>
+      </div>
+      <div class="card" id="hScanCard">
+        <div class="row between"><h2>Scan trays</h2><span class="pill" id="hToday">0 scanned today</span></div>
+        <div class="muted small" style="margin-top:4px">Every scan takes that tray off the Growing count straight away. Enter the boxes afterwards.</div>
+        <div class="row mt">
+          <input id="hCode" placeholder="Scan or type tray code, press Enter" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <button class="btn pri" id="hAdd">Add</button>
+        </div>
+        <div class="row mt">
+          <button class="btn pri wide" id="hCamStart"><i class="fas fa-camera"></i> Use camera</button>
+          <button class="btn wide hidden" id="hCamStop"><i class="fas fa-stop"></i> Stop camera</button>
+        </div>
+        <div id="hCamBox" class="cam hidden"></div>
+        <div id="hCamHint" class="hint hidden"></div>
+        <div id="hFb" class="fb hidden"></div>
+      </div>
+
+      <div class="card hidden" id="hManualCard">
+        <h2>Select manually</h2>
+        <div class="muted small" style="margin-top:4px">For trays with no label, or half trays. Tick the batch(es) the harvest came from and set trays per batch. Trays are deducted when you save.</div>
+        <div class="grid2">
+          <div class="full"><label>Harvest date</label><input type="date" id="xDate"></div>
+          <div class="full"><label>Variety</label><select id="xVar"><option value="">Select variety…</option></select></div>
+        </div>
+        <div id="xBatches"></div>
+        <div class="grid2">
+          <div class="full"><label>Other trays (no batch) — optional</label><input type="number" id="xOther" min="0" step="0.5" placeholder="0"></div>
+        </div>
+        <div class="row between mt"><span class="small muted">Trays harvested</span><b id="xTotal">0 trays</b></div>
+        <div id="xBoxWrap" class="grid2">
+          <div><label>Direct boxes</label><input type="number" inputmode="numeric" id="xB" min="0" placeholder="Pure variety"></div>
+          <div><label>Mix boxes</label><input type="number" inputmode="numeric" id="xMb" min="0" placeholder="e.g. 57"></div>
+          <div><label>Grams per mix box</label><input type="number" inputmode="numeric" id="xMg" min="1" value="15"></div>
+          <div><label>Override total grams</label><input type="number" inputmode="numeric" id="xAg" min="0" placeholder="optional"></div>
+        </div>
+        <div class="prev" id="xPrev"></div>
+        <button class="btn pri wide mt" id="xSave" data-act="saveManualHarvest"><i class="fas fa-save"></i> Save harvest</button>
+      </div>
+
+      <div id="pendingWrap"></div>
+
+      <div class="card">
+        <div class="row between">
+          <h2>Harvest log</h2>
+          <select id="hRange" style="width:auto"><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option></select>
+        </div>
+        <div class="tw"><table>
+          <thead><tr><th>Date</th><th>Variety</th><th class="n">Trays</th><th class="n">Direct</th><th class="n">Mix</th><th class="n">Yield</th><th class="n">g/tray</th><th></th></tr></thead>
+          <tbody id="hLogBody"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ================= WASTE LOG ================= -->
+    <section id="tab-waste" class="hidden">
+      <div class="stats">
+        <div class="stat"><span>Wasted (30d)</span><b id="wStatTotal">0</b></div>
+        <div class="stat"><span>Top variety</span><b id="wStatVar">—</b></div>
+        <div class="stat"><span>Top cause</span><b id="wStatCause">—</b></div>
+      </div>
+
+      <div class="card">
+        <div class="row between"><h2>Scan trays to waste</h2><button class="btn sm" data-act="openManualWaste"><i class="fas fa-pen"></i> Manual entry</button></div>
+        <div class="muted small" style="margin-top:4px">Scan every bad tray, pick the reason once, then confirm. Trays are deducted when you confirm.</div>
+        <div class="row mt">
+          <input id="wCode" placeholder="Scan or type tray code, press Enter" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <button class="btn red" id="wAdd">Add</button>
+        </div>
+        <div class="row mt">
+          <button class="btn red wide" id="wCamStart"><i class="fas fa-camera"></i> Use camera</button>
+          <button class="btn wide hidden" id="wCamStop"><i class="fas fa-stop"></i> Stop camera</button>
+        </div>
+        <div id="wCamBox" class="cam hidden"></div>
+        <div id="wCamHint" class="hint hidden"></div>
+        <div id="wFb" class="fb hidden"></div>
+      </div>
+
+      <div id="wasteListWrap"></div>
+
+      <div class="card">
+        <h2>Wastage records</h2>
+        <div class="tw"><table>
+          <thead><tr><th>Date</th><th>Variety</th><th class="n">Trays</th><th>Cause</th><th>Batch</th><th>Notes</th><th></th></tr></thead>
+          <tbody id="wLogBody"></tbody>
+        </table></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- EDIT HARVEST -->
+<div id="editModal" class="modal hidden"><div class="in">
+  <div class="row between"><h3>Edit harvest entry</h3><button class="act" data-act="closeEdit"><i class="fas fa-times"></i></button></div>
+  <div class="muted small" id="editTitle" style="margin-top:2px"></div>
+  <input type="hidden" id="editId">
+  <div class="grid2">
+    <div class="full"><label>Date</label><input type="date" id="eDate"></div>
+    <div id="eBoxWrap"><label>Direct boxes</label><input type="number" id="eB" min="0"></div>
+    <div id="eMixWrap"><label>Mix boxes</label><input type="number" id="eMb" min="0"></div>
+    <div id="eMgWrap"><label>Grams per mix box</label><input type="number" id="eMg" min="1"></div>
+    <div id="eAgWrap"><label>Override total grams</label><input type="number" id="eAg" min="0" placeholder="optional"></div>
+  </div>
+  <div class="muted small mt">Tray count can't be edited here — delete the entry to put its trays back to Growing, then scan again.</div>
+  <div class="row mt"><button class="btn wide" data-act="closeEdit">Cancel</button><button class="btn pri wide" data-act="saveEdit">Save changes</button></div>
+</div></div>
+
+<!-- MANUAL WASTE -->
+<div id="wasteModal" class="modal hidden"><div class="in">
+  <div class="row between"><h3>Log waste manually</h3><button class="act" data-act="closeManualWaste"><i class="fas fa-times"></i></button></div>
+  <div class="muted small" style="margin-top:2px">Use this for trays that have no label to scan.</div>
+  <div class="grid2">
+    <div class="full"><label>Date</label><input type="date" id="mDate"></div>
+    <div class="full"><label>Variety</label><select id="mVar"><option value="">Select variety…</option></select></div>
+    <div class="full"><label>Sown batch</label><select id="mBatch"><option value="">No batch (skip linking)</option></select></div>
+    <div><label>Trays lost</label><input type="number" id="mTrays" min="0.5" step="0.5" placeholder="e.g. 3"></div>
+    <div><label>Cause</label><select id="mCause"></select></div>
+    <div class="full"><label>Notes (optional)</label><textarea id="mNotes" rows="2"></textarea></div>
+  </div>
+  <div class="row mt"><button class="btn wide" data-act="closeManualWaste">Cancel</button><button class="btn red wide" data-act="saveManualWaste">Save record</button></div>
+</div></div>
+
+<div id="toast"></div>
+
+<script>
+/* ===================================================================
+   OLIGO — HARVESTING + WASTE LOG (scan only)
+   Same Firebase project and same database nodes as the main Production
+   app (trays / batches / harvests / wastage), so every other app and
+   report keeps working exactly as before.
+   =================================================================== */
+var firebaseConfig = { apiKey: "AIzaSyCtR2jdbu-SZ-7obmg88fPksJnNxk9BnqQ", authDomain: "oligo-store.firebaseapp.com", databaseURL: "https://oligo-store-default-rtdb.firebaseio.com", projectId: "oligo-store", storageBucket: "oligo-store.firebasestorage.app", messagingSenderId: "891788554016", appId: "1:891788554016:web:206c7da0a562fb7b1bf145" };
+firebase.initializeApp(firebaseConfig);
+var auth = firebase.auth(), db = firebase.database();
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(){});
+
+var CAUSES = ['Contamination','Pest / Disease','Poor Germination','Mould','Overwatering','Over Growth','Equipment Failure','Other'];
+var uid = null, farmName = 'Oligo Farms', approvedStarted = false;
+var menu = {}, batches = {}, harvests = {}, wastage = {};
+var pending = {};          // code -> {code,item,batchId,batchCode,sowDate,scannedAt}  (deducted, yield not entered yet)
+var forms = {};            // item -> {date,b,mb,mg,ag}  (typed values survive re-render)
+var wasteList = [];        // scanned for waste, not confirmed yet
+var wForm = { cause: CAUSES[0], notes: '', date: '' };
+var busy = {};             // codes currently being processed (blocks double-fire)
+
+/* ---------- helpers ---------- */
+function $(id){ return document.getElementById(id); }
+function esc(v){ return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function fbKey(k){ return String(k == null ? '' : k).replace(/[.#$\[\]\/]/g,'_'); }
+function r2(n){ return Math.round((parseFloat(n) || 0) * 100) / 100; }
+function pad(n){ return n < 10 ? '0' + n : '' + n; }
+function today(){ var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+function fmtDay(ts){ return ts ? new Date(ts).toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : '—'; }
+function plural(n, w){ return n + ' ' + w + (n === 1 ? '' : 's'); }
+var toastT = null;
+function toast(msg){ var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(function(){ t.classList.remove('show'); }, 3200); }
+function beep(ok){
+  try{ var C = window.AudioContext || window.webkitAudioContext; if(C){ var c = window._ac || (window._ac = new C()); if(c.state === 'suspended') c.resume();
+    var o = c.createOscillator(), g = c.createGain(); o.frequency.value = ok ? 880 : 220; g.gain.value = 0.08; o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime + (ok ? 0.09 : 0.25)); } }catch(e){}
+  try{ if(navigator.vibrate) navigator.vibrate(ok ? 30 : [60,40,60]); }catch(e2){}
+}
+function feedback(id, kind, html){ var el = $(id); el.className = 'fb ' + kind; el.innerHTML = html; beep(kind === 'ok'); }
+function menuByName(name){ var k = Object.keys(menu); for(var i=0;i<k.length;i++){ if(menu[k[i]] && menu[k[i]].name === name) return menu[k[i]]; } return null; }
+function isLive(name){ var m = menuByName(name); if(m) return m.category === 'Live Trays'; return /live/i.test(name || ''); }
+function isLiveRec(r){ if(r.isLiveTray) return true; var m = menuByName(r.item); if(m && m.category === 'Live Trays') return true; return /live/i.test(r.item || ''); }
+function batchTotal(b){ return parseFloat(b && (b.qty || b.plannedQty)) || 0; }
+function batchLeft(b){ return r2(batchTotal(b) - (b.harvestedTrays || 0) - (b.wastedTrays || 0)); }
+function sortedVarieties(){ var out = []; Object.keys(menu).forEach(function(k){ if(menu[k] && menu[k].name) out.push(menu[k].name); }); out.sort(function(a,b){ return a.localeCompare(b); }); return out; }
+
+/* transaction that first warms the local cache, so the first pass never sees a false "null" */
+function txn(r, fn){ return r.once('value').then(function(){ return r.transaction(fn); }); }
+
+/* ---------- LOGIN ---------- */
+function doLogin(){
+  var e = $('lgEmail').value.trim(), p = $('lgPass').value, err = $('lgErr'), btn = $('lgBtn');
+  if(!e || !p){ err.textContent = 'Enter email and password.'; err.classList.remove('hidden'); return; }
+  err.classList.add('hidden'); btn.disabled = true; btn.textContent = 'Logging in…';
+  auth.signInWithEmailAndPassword(e, p).catch(function(x){ err.textContent = x.message || 'Login failed.'; err.classList.remove('hidden'); }).then(function(){ btn.disabled = false; btn.textContent = 'Log in'; });
+}
+$('lgBtn').onclick = doLogin;
+$('lgPass').onkeydown = function(e){ if(e.key === 'Enter') doLogin(); };
+
+auth.onAuthStateChanged(function(user){
+  if(!user){ uid = null; approvedStarted = false; show('authView'); return; }
+  uid = user.uid; $('userEmail').textContent = user.email || '';
+  db.ref('Production/' + uid).on('value', function(s){
+    var d = s.val();
+    if(d && d.approved){
+      farmName = d.name || 'Oligo Farms'; $('farmName').textContent = farmName;
+      show('appView');
+      if(!approvedStarted){ approvedStarted = true; startApp(); }
+    } else { show('pendingView'); }
+  });
+});
+function show(id){ ['authView','pendingView','appView'].forEach(function(v){ $(v).classList.toggle('hidden', v !== id); }); }
+
+/* ---------- DATA ---------- */
+function startApp(){
+  wForm.date = today();
+  $('mCause').innerHTML = CAUSES.map(function(c){ return '<option>' + c + '</option>'; }).join('');
+  db.ref('menus/' + uid).on('value', function(s){ menu = s.val() || {}; fillVarietySelect(); renderAll(); });
+  db.ref('batches/' + uid).on('value', function(s){ batches = s.val() || {}; renderAll(); if(!$('wasteModal').classList.contains('hidden')) fillBatchSelect(); });
+  db.ref('harvests/' + uid).orderByKey().limitToLast(300).on('value', function(s){ harvests = s.val() || {}; renderHarvestLog(); renderHeader(); });
+  db.ref('wastage/' + uid).orderByKey().limitToLast(300).on('value', function(s){ wastage = s.val() || {}; renderWasteLog(); });
+  loadPending();
+  setTimeout(focusScan, 300);
+}
+/* trays that were scanned (already deducted) but whose yield was never saved, e.g. from yesterday or another phone */
+function loadPending(){
+  db.ref('trays/' + uid).orderByChild('harvestPending').equalTo(true).once('value').then(function(s){
+    var v = s.val() || {};
+    Object.keys(v).forEach(function(c){ var t = v[c]; if(t && t.status === 'Harvested' && t.harvestPending === true && !t.harvestedByEntry){ pending[c] = { code: c, item: t.item, batchId: t.batchId, batchCode: t.batchCode || '', sowDate: t.sowDate, scannedAt: t.harvestedAt || 0 }; } });
+    renderPending();
+  }).catch(function(){ toast('Could not load unfinished trays — check connection'); });
+}
+function renderAll(){ renderPending(); renderHarvestLog(); renderWasteList(); renderHeader(); if(hMode === 'manual' && !xAllocs().length) renderManualBatches(); }
+
+/* ---------- TABS ---------- */
+var curTab = 'harvest';
+function switchTab(t){
+  curTab = t;
+  Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function(b){ b.classList.toggle('on', b.getAttribute('data-tab') === t); });
+  $('tab-harvest').classList.toggle('hidden', t !== 'harvest');
+  $('tab-waste').classList.toggle('hidden', t !== 'waste');
+  hCam.stop(); wCam.stop();
+  setTimeout(focusScan, 100);
+}
+function focusScan(){
+  try{ if(window.matchMedia && !window.matchMedia('(pointer:fine)').matches) return; var i = $(curTab === 'harvest' ? 'hCode' : 'wCode'); if(i && i.offsetParent) i.focus(); }catch(e){}
+}
+
+/* ---------- CAMERA ---------- */
+function ensureQr(){
+  if(typeof Html5Qrcode !== 'undefined') return Promise.resolve();
+  return new Promise(function(res, rej){
+    var s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js';
+    s.onload = res; s.onerror = rej; document.head.appendChild(s);
+  });
+}
+function makeCam(boxId, startId, stopId, hintId, onCode){
+  var inst = null, last = { c: '', t: 0 };
+  function hint(m){ var h = $(hintId); if(!m){ h.classList.add('hidden'); h.textContent = ''; } else { h.textContent = m; h.classList.remove('hidden'); } }
+  function ui(on){ $(startId).classList.toggle('hidden', on); $(stopId).classList.toggle('hidden', !on); var b = $(boxId); if(!on){ b.classList.add('hidden'); b.innerHTML = ''; } else b.classList.remove('hidden'); }
+  function release(){ var v = $(boxId).querySelectorAll('video'); for(var i=0;i<v.length;i++){ try{ var s = v[i].srcObject; if(s && s.getTracks) s.getTracks().forEach(function(t){ t.stop(); }); v[i].srcObject = null; }catch(e){} } }
+  function decode(text){ var n = Date.now(); if(text === last.c && n - last.t < 2500){ last.t = n; return; } last = { c: text, t: n }; onCode(text); }
+  function start(){
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ hint('This browser cannot use the camera — type the code in the box instead.'); return; }
+    hint(''); $(boxId).classList.remove('hidden');
+    ensureQr().then(function(){
+      var prev = inst ? inst.stop().catch(function(){}) : Promise.resolve();
+      return prev;
+    }).then(function(){
+      release(); $(boxId).innerHTML = '';
+      inst = new Html5Qrcode(boxId);
+      var cfg = { fps: 10, qrbox: function(w, h){ var m = Math.min(w, h); return { width: Math.floor(m * 0.85), height: Math.floor(m * 0.35) }; } };
+      if(typeof Html5QrcodeSupportedFormats !== 'undefined') cfg.formatsToSupport = [Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.QR_CODE];
+      cfg.experimentalFeatures = { useBarCodeDetectorIfSupported: true };
+      return inst.start({ facingMode: 'environment' }, cfg, decode).then(function(){ ui(true); }).catch(function(e1){
+        return Html5Qrcode.getCameras().then(function(d){ var id = d && d.length ? d[d.length-1].id : null; if(!id) throw e1; return inst.start(id, cfg, decode).then(function(){ ui(true); }); });
+      });
+    }).catch(function(err){
+      release(); inst = null; ui(false);
+      var n = err && (err.name || err.message) ? ' (' + (err.name || err.message) + ')' : '';
+      hint('Camera could not start' + n + '. Allow camera access for this page, or type the code in the box.');
+    });
+  }
+  function stop(){
+    var done = function(){ inst = null; release(); ui(false); };
+    if(inst){ inst.stop().then(function(){ try{ inst.clear(); }catch(e){} }).catch(function(){}).then(done); } else done();
+  }
+  $(startId).onclick = start; $(stopId).onclick = stop;
+  return { start: start, stop: stop };
+}
+var hCam = makeCam('hCamBox','hCamStart','hCamStop','hCamHint', function(c){ harvestScan(c); });
+var wCam = makeCam('wCamBox','wCamStart','wCamStop','wCamHint', function(c){ wasteScan(c); });
+
+/* ---------- BATCH COUNTERS (atomic, so two phones can't clash) ---------- */
+function bumpBatch(batchId, kind, delta){
+  if(!batchId) return Promise.resolve(null);
+  var r = db.ref('batches/' + uid + '/' + batchId);
+  return txn(r, function(b){
+    if(!b) return;
+    var total = batchTotal(b), h = b.harvestedTrays || 0, w = b.wastedTrays || 0;
+    // older closed batches stored the whole batch size as "harvested"; normalise before subtracting
+    if(kind === 'harvest' && delta < 0 && total > 0 && h + w > total) h = r2(total - w);
+    if(kind === 'harvest') h = r2(Math.max(0, h + delta)); else w = r2(Math.max(0, w + delta));
+    b.harvestedTrays = h; b.wastedTrays = w;
+    var rem = r2(total - h - w);
+    if(delta > 0){
+      if(total > 0 && rem <= 0 && b.status !== 'Harvested'){
+        b.status = 'Harvested'; b.harvestedAt = Date.now();
+        if(kind === 'harvest') b.harvestedByEntry = 'scan-pending'; else if(h === 0) b.outcome = 'Wasted';
+      }
+    } else if(b.status === 'Harvested' && total > 0 && rem > 0){
+      b.status = 'Growing'; b.harvestedAt = null; b.harvestedByEntry = null; b.outcome = null; if(kind === 'waste') b.wastedByEntry = null;
+    }
+    return b;
+  }).then(function(res){
+    var b = res.snapshot.val(); if(!b) return null;
+    return { left: batchLeft(b), closed: b.status === 'Harvested', code: b.batchCode || '' };
+  });
+}
+
+/* ===================================================================
+   HARVESTING
+   =================================================================== */
+$('hAdd').onclick = function(){ var v = $('hCode').value; $('hCode').value = ''; harvestScan(v); focusScan(); };
+$('hCode').onkeydown = function(e){ if(e.key === 'Enter'){ e.preventDefault(); $('hAdd').click(); } };
+$('hRange').onchange = renderHarvestLog;
+
+/* One scan = tray marked Harvested + batch Growing count reduced by 1, immediately. */
+function harvestScan(raw){
+  var code = fbKey(String(raw || '').trim().toUpperCase());
+  if(!code) return;
+  if(pending[code]){ feedback('hFb','warn','<i class="fas fa-circle-info"></i> ' + esc(code) + ' is already scanned. Nothing changed.'); return; }
+  if(busy[code]) return; busy[code] = true;
+  var tref = db.ref('trays/' + uid + '/' + code), t = null;
+  tref.once('value').then(function(s){
+    t = s.val();
+    if(!t) throw { user: 'Tray code not found: ' + code };
+    if(t.status && t.status !== 'Growing'){
+      var ts = t.status === 'Harvested' ? t.harvestedAt : t.wastedAt;
+      throw { user: code + ' was already marked ' + t.status + (ts ? ' on ' + fmtDay(ts) : '') + '.' };
+    }
+    return tref.transaction(function(cur){
+      if(!cur || (cur.status && cur.status !== 'Growing')) return;
+      cur.status = 'Harvested'; cur.harvestedAt = Date.now(); cur.harvestedByFarmer = farmName || 'Manager';
+      cur.harvestedByEntry = null; cur.harvestPending = true;
+      return cur;
+    });
+  }).then(function(res){
+    if(!res.committed) throw { user: code + ' was just taken by another scan.' };
+    pending[code] = { code: code, item: t.item, batchId: t.batchId, batchCode: t.batchCode || '', sowDate: t.sowDate, scannedAt: Date.now() };
+    renderPending();
+    return bumpBatch(t.batchId, 'harvest', +1).then(function(info){
+      var extra = info ? (info.closed ? 'Last tray of batch ' + esc(info.code) + ' — batch closed.' : plural(info.left, 'tray') + ' still growing in batch ' + esc(info.code) + '.') : 'Batch record not found — tray deducted only.';
+      feedback('hFb','ok','<i class="fas fa-circle-check"></i> ' + esc(code) + ' · ' + esc(t.item) + ' deducted<small>' + extra + '</small>');
+    });
+  }).catch(function(e){
+    feedback('hFb','err','<i class="fas fa-circle-xmark"></i> ' + esc(e && e.user ? e.user : 'Could not save the scan — check your connection and scan again.'));
+  }).then(function(){ delete busy[code]; });
+}
+
+/* Put a scanned-by-mistake tray back (only while its yield is not saved yet). */
+function undoTray(code){
+  var p = pending[code]; if(!p) return;
+  if(!confirm('Put ' + code + ' back to Growing?')) return;
+  txn(db.ref('trays/' + uid + '/' + code), function(cur){
+    if(!cur || cur.status !== 'Harvested' || cur.harvestPending !== true) return;
+    cur.status = 'Growing'; cur.harvestedAt = null; cur.harvestedByFarmer = null; cur.harvestedByEntry = null; cur.harvestPending = null;
+    return cur;
+  }).then(function(res){
+    if(!res.committed) throw 0;
+    return bumpBatch(p.batchId, 'harvest', -1);
+  }).then(function(){ delete pending[code]; renderPending(); toast(code + ' is back to Growing — it can be scanned again'); })
+    .catch(function(){ toast('Could not undo — refresh and check the tray'); });
+}
+
+function groupsOfPending(){
+  var map = {}, order = [];
+  Object.keys(pending).forEach(function(c){ var p = pending[c]; if(!map[p.item]){ map[p.item] = []; order.push(p.item); } map[p.item].push(p); });
+  order.sort(function(a,b){ return a.localeCompare(b); });
+  return order.map(function(item){ return { item: item, trays: map[item].sort(function(a,b){ return a.code < b.code ? -1 : 1; }) }; });
+}
+function renderHeader(){
+  var n = Object.keys(pending).length, b = $('pendBadge');
+  b.textContent = n; b.classList.toggle('hidden', n === 0);
+  var t = today(), c = 0;
+  Object.keys(harvests).forEach(function(k){ var r = harvests[k]; if(r && r.date === t) c += (r.scannedTrayCodes ? r.scannedTrayCodes.length : 0); });
+  c += n;
+  $('hToday').textContent = plural(c, 'tray') + ' scanned today';
+}
+function renderPending(){
+  renderHeader();
+  var wrap = $('pendingWrap'), gs = groupsOfPending();
+  if(!gs.length){ wrap.innerHTML = '<div class="card empty"><i class="fas fa-qrcode" style="font-size:26px;opacity:.25"></i><br>No trays waiting for yield.<br>Scan a tray and it appears here.</div>'; return; }
+  var html = '';
+  gs.forEach(function(g){
+    var f = forms[g.item] || (forms[g.item] = { date: today(), b: '', mb: '', mg: 15, ag: '' });
+    var live = isLive(g.item), byB = {}, bOrder = [];
+    g.trays.forEach(function(p){ if(!byB[p.batchId]){ byB[p.batchId] = { n: 0, code: p.batchCode, sow: p.sowDate }; bOrder.push(p.batchId); } byB[p.batchId].n++; });
+    var lines = bOrder.map(function(id){ var b = batches[id], x = byB[id]; return 'Batch ' + esc(x.code || '—') + ' · sown ' + fmtDay(x.sow) + ' · ' + plural(x.n, 'tray') + (b ? ' · ' + batchLeft(b) + ' left growing' : ''); }).join('<br>');
+    var chips = g.trays.map(function(p){ return '<span class="chip">' + esc(p.code) + '<button data-act="undo" data-code="' + esc(p.code) + '" title="Put back to Growing"><i class="fas fa-rotate-left"></i></button></span>'; }).join('');
+    html += '<div class="card grp" data-item="' + esc(g.item) + '">' +
+      '<div class="row between"><h3>' + esc(g.item) + '</h3><span class="pill">' + plural(g.trays.length, 'tray') + ' deducted</span></div>' +
+      '<div class="muted small" style="margin-top:6px">' + lines + '</div>' +
+      '<div class="chips">' + chips + '</div>' +
+      '<div class="grid2"><div class="full"><label>Harvest date</label><input type="date" data-f="date" data-item="' + esc(g.item) + '" value="' + esc(f.date) + '"></div>' +
+      (live ? '<div class="full muted small"><i class="fas fa-leaf" style="color:var(--g)"></i> Live trays are sold as whole trays — no boxes needed.</div>' :
+        '<div><label>Direct boxes</label><input type="number" inputmode="numeric" min="0" data-f="b" data-item="' + esc(g.item) + '" value="' + esc(f.b) + '" placeholder="Pure variety"></div>' +
+        '<div><label>Mix boxes</label><input type="number" inputmode="numeric" min="0" data-f="mb" data-item="' + esc(g.item) + '" value="' + esc(f.mb) + '" placeholder="e.g. 57"></div>' +
+        '<div><label>Grams per mix box</label><input type="number" inputmode="numeric" min="1" data-f="mg" data-item="' + esc(g.item) + '" value="' + esc(f.mg) + '"></div>' +
+        '<div><label>Override total grams</label><input type="number" inputmode="numeric" min="0" data-f="ag" data-item="' + esc(g.item) + '" value="' + esc(f.ag) + '" placeholder="optional"></div>') +
+      '</div><div class="prev" data-prev="' + esc(g.item) + '"></div>' +
+      '<button class="btn pri wide mt" data-act="saveGroup" data-item="' + esc(g.item) + '"><i class="fas fa-save"></i> Save harvest · ' + plural(g.trays.length, 'tray') + '</button></div>';
+  });
+  wrap.innerHTML = html;
+  gs.forEach(function(g){ updatePreview(g.item); });
+}
+function calcYield(item, n){
+  var f = forms[item] || {}, live = isLive(item);
+  if(live) return { live: true, total: n, per: 1, b: n, mb: 0, mg: 0, ag: 0, direct: 0, mix: 0 };
+  var b = parseInt(f.b) || 0, mb = parseInt(f.mb) || 0, mg = parseInt(f.mg) || 15, ag = parseInt(f.ag) || 0;
+  var direct = b * 50, mix = mb * mg, auto = direct + mix, total = ag > 0 ? ag : auto;
+  return { live: false, total: total, per: n > 0 ? parseFloat((total / n).toFixed(1)) : 0, b: b, mb: mb, mg: mg, ag: ag, direct: direct, mix: mix };
+}
+function updatePreview(item){
+  var el = document.querySelector('[data-prev="' + (window.CSS && CSS.escape ? CSS.escape(item) : item.replace(/"/g,'\\"')) + '"]'); if(!el) return;
+  var n = 0; Object.keys(pending).forEach(function(c){ if(pending[c].item === item) n++; });
+  var y = calcYield(item, n);
+  if(y.live) el.textContent = n + ' trays → ' + n + ' live units for sale';
+  else if(y.total <= 0) el.textContent = 'Enter boxes to see the total yield';
+  else el.textContent = y.total + ' g total · ' + y.per + ' g per tray';
+}
+
+/* Save = write ONE normal harvest entry (same format the main app + reports read). Trays are already deducted. */
+function saveGroup(item){
+  var codes = Object.keys(pending).filter(function(c){ return pending[c].item === item; });
+  if(!codes.length) return;
+  var f = forms[item] || {}, live = isLive(item), d = f.date || today();
+  var y = calcYield(item, codes.length);
+  if(!live && y.b < 1 && y.mb < 1){ toast('Enter Direct boxes or Mix boxes (or both)'); return; }
+  var btn = document.querySelector('[data-act="saveGroup"][data-item="' + (window.CSS && CSS.escape ? CSS.escape(item) : item) + '"]');
+  if(btn) btn.disabled = true;
+  Promise.all(codes.map(function(c){ return db.ref('trays/' + uid + '/' + c).once('value'); })).then(function(snaps){
+    var good = [], bad = [];
+    snaps.forEach(function(s, i){ var t = s.val(); if(t && t.harvestPending === true && !t.harvestedByEntry) good.push(codes[i]); else bad.push(codes[i]); });
+    if(bad.length){ bad.forEach(function(c){ delete pending[c]; }); renderPending(); toast(plural(bad.length, 'tray') + ' already saved elsewhere and removed — check and save again'); return; }
+    var alloc = {}, order = [];
+    good.forEach(function(c){ var id = pending[c].batchId; if(!alloc[id]){ alloc[id] = 0; order.push(id); } alloc[id]++; });
+    var allocations = order.map(function(id){ return { batchId: id, trays: alloc[id] }; });
+    var n = good.length, m = menuByName(item), s = (m && m.gramsPerTray ? m.gramsPerTray : 0) * n;
+    var rec = { date: d, item: item, trays: n, boxes: y.b, mixBoxes: y.mb, mixGramsPerBox: y.mg, directYield: y.direct, mixYield: y.mix,
+                totalYield: y.total, yieldPerTray: y.per, seedUsed: s, ratio: (!y.live && s > 0) ? (y.total / s).toFixed(2) : 0,
+                timestamp: firebase.database.ServerValue.TIMESTAMP, batchAllocations: allocations, batchId: allocations[0].batchId,
+                scannedTrayCodes: good, scanned: true };
+    if(y.live) rec.isLiveTray = true;
+    if(y.ag > 0) rec.actualGrams = y.ag;
+    if(batches[rec.batchId]) rec.batchSowDate = batches[rec.batchId].sowDate;
+    var key = db.ref('harvests/' + uid).push().key, up = {};
+    up['harvests/' + uid + '/' + key] = rec;
+    good.forEach(function(c){ up['trays/' + uid + '/' + c + '/harvestedByEntry'] = key; up['trays/' + uid + '/' + c + '/harvestPending'] = null; });
+    order.forEach(function(id){ var b = batches[id]; if(!b) return;
+      if(b.harvestedByEntry === 'scan-pending') up['batches/' + uid + '/' + id + '/harvestedByEntry'] = key;
+      else if(b.status !== 'Harvested') up['batches/' + uid + '/' + id + '/lastPartialHarvestEntry'] = key; });
+    return db.ref().update(up).then(function(){
+      good.forEach(function(c){ delete pending[c]; }); delete forms[item]; renderPending();
+      toast('✅ ' + item + ' · ' + plural(n, 'tray') + (y.live ? ' → ' + n + ' live units' : ' · ' + y.total + ' g (' + y.per + ' g/tray)'));
+    });
+  }).catch(function(){ toast('Could not save — check your connection and try again'); }).then(function(){ if(btn) btn.disabled = false; });
+}
+
+/* ---------- harvest: SELECT MANUALLY ---------- */
+var hMode = 'scan';
+function setHMode(m){
+  hMode = m; hCam.stop();
+  $('hScanCard').classList.toggle('hidden', m !== 'scan'); $('hManualCard').classList.toggle('hidden', m !== 'manual');
+  $('hModeScan').classList.toggle('on', m === 'scan'); $('hModeManual').classList.toggle('on', m === 'manual');
+  if(m === 'manual'){ if(!$('xDate').value) $('xDate').value = today(); fillVarietySelect(); renderManualBatches(); } else focusScan();
+}
+function xRows(){ return document.querySelectorAll('#xBatches [data-xrow]'); }
+function renderManualBatches(){
+  var v = $('xVar').value, box = $('xBatches'), list = [];
+  if(!v){ box.innerHTML = '<div class="muted small mt">Choose a variety to see its open batches.</div>'; xRecalc(); return; }
+  Object.keys(batches).forEach(function(id){ var b = batches[id]; if(b && b.item === v && b.status !== 'Harvested' && batchLeft(b) >= 0.5) list.push({ id: id, b: b }); });
+  list.sort(function(a,b){ return a.b.sowDate - b.b.sowDate; });
+  if(!list.length){ box.innerHTML = '<div class="muted small mt">No open batches for this variety — enter the trays under "Other trays" below.</div>'; xRecalc(); return; }
+  box.innerHTML = list.map(function(x){ var left = batchLeft(x.b);
+    return '<div class="xrow" data-xrow="' + x.id + '"><input type="checkbox" class="xchk" data-x="chk">' +
+      '<div class="grow"><b>Sown ' + fmtDay(x.b.sowDate) + '</b><div class="small muted">' + left + ' trays left of ' + batchTotal(x.b) + (x.b.batchCode ? ' · ' + esc(x.b.batchCode) : '') + '</div></div>' +
+      '<input type="number" inputmode="decimal" class="xqty hidden" data-x="qty" min="0.5" step="0.5" max="' + left + '" placeholder="Trays"></div>'; }).join('');
+  xRecalc();
+}
+function xAllocs(){
+  var out = [];
+  Array.prototype.forEach.call(xRows(), function(row){
+    var c = row.querySelector('[data-x="chk"]'), q = row.querySelector('[data-x="qty"]');
+    if(c.checked){ var n = r2(parseFloat(q.value) || 0), mx = parseFloat(q.max) || 0; if(n > mx) n = mx; if(n > 0) out.push({ batchId: row.getAttribute('data-xrow'), trays: n }); }
+  });
+  return out;
+}
+function xTrays(){ var t = r2(parseFloat($('xOther').value) || 0); xAllocs().forEach(function(a){ t += a.trays; }); return r2(t); }
+function xCalc(n, live){
+  if(live) return { live: true, total: n, per: 1, b: n, mb: 0, mg: 0, ag: 0, direct: 0, mix: 0 };
+  var b = parseInt($('xB').value) || 0, mb = parseInt($('xMb').value) || 0, mg = parseInt($('xMg').value) || 15, ag = parseInt($('xAg').value) || 0;
+  var direct = b * 50, mix = mb * mg, total = ag > 0 ? ag : direct + mix;
+  return { live: false, total: total, per: n > 0 ? parseFloat((total / n).toFixed(1)) : 0, b: b, mb: mb, mg: mg, ag: ag, direct: direct, mix: mix };
+}
+function xRecalc(){
+  var v = $('xVar').value, live = !!v && isLive(v), n = xTrays(), y = xCalc(n, live);
+  $('xTotal').textContent = plural(n, 'tray');
+  $('xBoxWrap').classList.toggle('hidden', live);
+  $('xPrev').textContent = n <= 0 ? 'Tick a batch and set trays to begin' : (live ? n + ' trays → ' + n + ' live units for sale' : (y.total <= 0 ? 'Enter boxes to see the total yield' : y.total + ' g total · ' + y.per + ' g per tray'));
+}
+function saveManualHarvest(){
+  var d = $('xDate').value, v = $('xVar').value, n = xTrays(), live = !!v && isLive(v);
+  if(!d || !v || !(n > 0)){ toast('Fill date, variety and trays'); return; }
+  var y = xCalc(n, live);
+  if(!live && y.b < 1 && y.mb < 1){ toast('Enter Direct boxes or Mix boxes (or both)'); return; }
+  var allocs = xAllocs(), m = menuByName(v), s = (m && m.gramsPerTray ? m.gramsPerTray : 0) * n;
+  var rec = { date: d, item: v, trays: n, boxes: y.b, mixBoxes: y.mb, mixGramsPerBox: y.mg, directYield: y.direct, mixYield: y.mix,
+              totalYield: y.total, yieldPerTray: y.per, seedUsed: s, ratio: (!y.live && s > 0) ? (y.total / s).toFixed(2) : 0,
+              timestamp: firebase.database.ServerValue.TIMESTAMP, manual: true };
+  if(y.live) rec.isLiveTray = true;
+  if(y.ag > 0) rec.actualGrams = y.ag;
+  if(allocs.length){ rec.batchAllocations = allocs; rec.batchId = allocs[0].batchId; if(batches[rec.batchId]) rec.batchSowDate = batches[rec.batchId].sowDate; }
+  var btn = $('xSave'); btn.disabled = true;
+  var key = db.ref('harvests/' + uid).push().key;
+  db.ref('harvests/' + uid + '/' + key).set(rec).then(function(){
+    var chain = Promise.resolve();
+    allocs.forEach(function(a){
+      chain = chain.then(function(){ return bumpBatch(a.batchId, 'harvest', a.trays); }).then(function(info){
+        var f = {}; f[info && info.closed ? 'harvestedByEntry' : 'lastPartialHarvestEntry'] = key;
+        return db.ref('batches/' + uid + '/' + a.batchId).update(f);
+      });
+    });
+    return chain;
+  }).then(function(){
+    ['xB','xMb','xAg','xOther'].forEach(function(id){ $(id).value = ''; });
+    renderManualBatches();
+    toast('✅ ' + v + ' · ' + plural(n, 'tray') + (live ? ' → ' + n + ' live units' : ' · ' + y.total + ' g (' + y.per + ' g/tray)'));
+  }).catch(function(){ toast('Could not save — check your connection and try again'); }).then(function(){ btn.disabled = false; });
+}
+$('xVar').onchange = renderManualBatches;
+
+/* ---------- harvest log ---------- */
+function renderHarvestLog(){
+  var days = parseInt($('hRange').value) || 7, from = Date.now() - days * 86400000;
+  var rows = Object.keys(harvests).map(function(k){ return { k: k, r: harvests[k] }; }).filter(function(x){ return x.r && new Date(x.r.date).getTime() >= from - 86400000; });
+  rows.sort(function(a,b){ return a.r.date === b.r.date ? (a.k < b.k ? 1 : -1) : (a.r.date < b.r.date ? 1 : -1); });
+  if(!rows.length){ $('hLogBody').innerHTML = '<tr><td colspan="8" class="empty">No harvest entries in this range.</td></tr>'; return; }
+  $('hLogBody').innerHTML = rows.map(function(x){
+    var r = x.r, live = isLiveRec(r), scan = r.scannedTrayCodes && r.scannedTrayCodes.length;
+    var tot = live ? (r.trays + ' live') : ((r.totalYield || (r.boxes || 0) * 50) + ' g');
+    var per = live ? '—' : (r.yieldPerTray || (r.trays > 0 ? ((r.totalYield || 0) / r.trays).toFixed(1) : 0));
+    return '<tr><td>' + esc(r.date) + '</td><td><b>' + esc(r.item) + '</b>' + (scan ? '<br><span class="muted small"><i class="fas fa-barcode"></i> scanned</span>' : '') + '</td>' +
+      '<td class="n">' + r2(r.trays) + '</td><td class="n">' + (live ? '—' : (r.boxes || 0)) + '</td><td class="n">' + (live ? '—' : (r.mixBoxes || 0)) + '</td>' +
+      '<td class="n"><b>' + tot + '</b></td><td class="n">' + per + '</td>' +
+      '<td style="white-space:nowrap"><button class="act" data-act="editH" data-id="' + x.k + '"><i class="fas fa-pen"></i></button><button class="act d" data-act="delH" data-id="' + x.k + '"><i class="fas fa-trash"></i></button></td></tr>';
+  }).join('');
+}
+function openEdit(id){
+  var r = harvests[id]; if(!r) return;
+  var live = isLiveRec(r);
+  $('editId').value = id; $('editTitle').textContent = r.item + ' · ' + plural(r2(r.trays), 'tray');
+  $('eDate').value = r.date || ''; $('eB').value = r.boxes || ''; $('eMb').value = r.mixBoxes || ''; $('eMg').value = r.mixGramsPerBox || 15; $('eAg').value = r.actualGrams || '';
+  ['eBoxWrap','eMixWrap','eMgWrap','eAgWrap'].forEach(function(w){ $(w).classList.toggle('hidden', live); });
+  $('editModal').classList.remove('hidden');
+}
+function saveEdit(){
+  var id = $('editId').value, r = harvests[id]; if(!r) return;
+  var d = $('eDate').value; if(!d){ toast('Pick a date'); return; }
+  var up = { date: d };
+  if(!isLiveRec(r)){
+    var b = parseInt($('eB').value) || 0, mb = parseInt($('eMb').value) || 0, mg = parseInt($('eMg').value) || 15, ag = parseInt($('eAg').value) || 0;
+    if(b < 1 && mb < 1){ toast('Enter Direct boxes or Mix boxes (or both)'); return; }
+    var total = ag > 0 ? ag : b * 50 + mb * mg;
+    up.boxes = b; up.mixBoxes = mb; up.mixGramsPerBox = mg; up.directYield = b * 50; up.mixYield = mb * mg;
+    up.totalYield = total; up.yieldPerTray = r.trays > 0 ? parseFloat((total / r.trays).toFixed(1)) : 0; up.actualGrams = ag > 0 ? ag : null;
+    up.ratio = r.seedUsed > 0 ? (total / r.seedUsed).toFixed(2) : 0;
+  }
+  db.ref('harvests/' + uid + '/' + id).update(up).then(function(){ $('editModal').classList.add('hidden'); toast('Harvest entry updated'); }).catch(function(){ toast('Could not save — check connection'); });
+}
+function deleteHarvest(id){
+  var r = harvests[id]; if(!r) return;
+  var codes = r.scannedTrayCodes || [];
+  if(!confirm('Delete this harvest entry?' + (codes.length ? '\nIts ' + plural(codes.length, 'scanned tray') + ' go back to Growing.' : (r.manual ? '\nIts trays are given back to the batch(es).' : '')))) return;
+  db.ref('harvests/' + uid + '/' + id).remove().then(function(){
+    if(!codes.length && !r.manual) return;
+    var up = {};
+    codes.forEach(function(c){ var b = 'trays/' + uid + '/' + c + '/'; up[b+'status'] = 'Growing'; up[b+'harvestedAt'] = null; up[b+'harvestedByEntry'] = null; up[b+'harvestedByFarmer'] = null; up[b+'harvestPending'] = null; });
+    var allocs = r.batchAllocations || (r.batchId ? [{ batchId: r.batchId, trays: r.trays || codes.length }] : []);
+    return db.ref().update(up).then(function(){
+      return Promise.all(allocs.map(function(a){ return bumpBatch(a.batchId, 'harvest', -(a.trays || 0)); }));
+    });
+  }).then(function(){ toast(codes.length ? 'Entry deleted — trays are back to Growing' : 'Entry deleted'); }).catch(function(){ toast('Could not delete — check connection'); });
+}
+
+/* ===================================================================
+   WASTE LOG
+   =================================================================== */
+$('wAdd').onclick = function(){ var v = $('wCode').value; $('wCode').value = ''; wasteScan(v); focusScan(); };
+$('wCode').onkeydown = function(e){ if(e.key === 'Enter'){ e.preventDefault(); $('wAdd').click(); } };
+
+/* Scanning for waste only builds a list. Nothing changes until "Confirm waste" (the reason is needed first). */
+function wasteScan(raw){
+  var code = fbKey(String(raw || '').trim().toUpperCase());
+  if(!code) return;
+  for(var i=0;i<wasteList.length;i++){ if(wasteList[i].code === code){ feedback('wFb','warn','<i class="fas fa-circle-info"></i> ' + esc(code) + ' is already in the list.'); return; } }
+  if(busy['w' + code]) return; busy['w' + code] = true;
+  db.ref('trays/' + uid + '/' + code).once('value').then(function(s){
+    var t = s.val();
+    if(!t) throw { user: 'Tray code not found: ' + code };
+    if(t.status && t.status !== 'Growing'){ var ts = t.status === 'Harvested' ? t.harvestedAt : t.wastedAt; throw { user: code + ' was already marked ' + t.status + (ts ? ' on ' + fmtDay(ts) : '') + '.' }; }
+    for(var j=0;j<wasteList.length;j++){ if(wasteList[j].code === code) return; }
+    wasteList.push({ code: code, item: t.item, batchId: t.batchId, batchCode: t.batchCode || '', sowDate: t.sowDate });
+    renderWasteList();
+    feedback('wFb','ok','<i class="fas fa-circle-check"></i> ' + esc(code) + ' added · ' + esc(t.item));
+  }).catch(function(e){ feedback('wFb','err','<i class="fas fa-circle-xmark"></i> ' + esc(e && e.user ? e.user : 'Lookup failed — check your connection.')); })
+    .then(function(){ delete busy['w' + code]; });
+}
+function renderWasteList(){
+  var wrap = $('wasteListWrap');
+  if(!wasteList.length){ wrap.innerHTML = ''; return; }
+  var chips = wasteList.map(function(p){ return '<span class="chip">' + esc(p.code) + ' · ' + esc(p.item) + '<button data-act="wRemove" data-code="' + esc(p.code) + '"><i class="fas fa-times"></i></button></span>'; }).join('');
+  wrap.innerHTML = '<div class="card wgrp"><div class="row between"><h3>Ready to waste</h3><span class="pill r">' + plural(wasteList.length, 'tray') + '</span></div>' +
+    '<div class="chips">' + chips + '</div>' +
+    '<div class="grid2"><div><label>Date</label><input type="date" id="wDate" value="' + esc(wForm.date) + '"></div>' +
+    '<div><label>Reason</label><select id="wCause">' + CAUSES.map(function(c){ return '<option' + (c === wForm.cause ? ' selected' : '') + '>' + c + '</option>'; }).join('') + '</select></div>' +
+    '<div class="full"><label>Notes (optional)</label><textarea id="wNotes" rows="2">' + esc(wForm.notes) + '</textarea></div></div>' +
+    '<div class="row mt"><button class="btn wide" data-act="wClear">Clear</button><button class="btn red wide" id="wConfirm" data-act="wConfirm"><i class="fas fa-trash-alt"></i> Confirm waste · ' + plural(wasteList.length, 'tray') + '</button></div></div>';
+  $('wDate').onchange = function(){ wForm.date = this.value; };
+  $('wCause').onchange = function(){ wForm.cause = this.value; };
+  $('wNotes').oninput = function(){ wForm.notes = this.value; };
+}
+function confirmWaste(){
+  if(!wasteList.length) return;
+  var d = wForm.date || today(), cause = wForm.cause, notes = wForm.notes, list = wasteList.slice();
+  var btn = $('wConfirm'); if(btn) btn.disabled = true;
+  // 1) mark every tray Wasted (only if it is still Growing), 2) one wastage record per batch, 3) batch counters
+  Promise.all(list.map(function(p){
+    return txn(db.ref('trays/' + uid + '/' + p.code), function(cur){
+      if(!cur || (cur.status && cur.status !== 'Growing')) return;
+      cur.status = 'Wasted'; cur.wastedAt = Date.now(); cur.wastedByFarmer = farmName || 'Manager'; cur.cause = cause; return cur;
+    }).then(function(res){ return res.committed ? p : null; });
+  })).then(function(done){
+    var ok = done.filter(function(x){ return x; }), skipped = list.length - ok.length;
+    var byB = {}, order = [];
+    ok.forEach(function(p){ if(!byB[p.batchId]){ byB[p.batchId] = []; order.push(p.batchId); } byB[p.batchId].push(p); });
+    var chain = Promise.resolve();
+    order.forEach(function(bid){
+      chain = chain.then(function(){
+        var ps = byB[bid], codes = ps.map(function(p){ return p.code; });
+        var rec = { date: d, variety: ps[0].item, trays: ps.length, cause: cause, notes: notes, loggedBy: farmName, timestamp: firebase.database.ServerValue.TIMESTAMP,
+                    batchId: bid, batchSowDate: ps[0].sowDate, scannedTrayCodes: codes, scanned: true };
+        if(codes.length === 1) rec.scannedTrayCode = codes[0];
+        var key = db.ref('wastage/' + uid).push().key, up = {};
+        up['wastage/' + uid + '/' + key] = rec;
+        codes.forEach(function(c){ up['trays/' + uid + '/' + c + '/wastedByEntry'] = key; });
+        return db.ref().update(up).then(function(){ return bumpBatch(bid, 'waste', ps.length); }).then(function(info){
+          var f = {}; f[info && info.closed ? 'wastedByEntry' : 'lastWastageEntry'] = key;
+          return db.ref('batches/' + uid + '/' + bid).update(f);
+        });
+      });
+    });
+    return chain.then(function(){
+      wasteList = []; wForm.notes = ''; renderWasteList();
+      toast('🗑️ ' + plural(ok.length, 'tray') + ' wasted' + (skipped ? ' · ' + skipped + ' skipped (already changed elsewhere)' : ''));
+    });
+  }).catch(function(){ toast('Could not finish — check connection, then scan the trays again'); wasteList = []; renderWasteList(); });
+}
+
+function renderWasteLog(){
+  var recs = Object.keys(wastage).map(function(k){ return { k: k, r: wastage[k] }; }).filter(function(x){ return x.r; });
+  recs.sort(function(a,b){ return a.r.date === b.r.date ? (a.k < b.k ? 1 : -1) : (a.r.date < b.r.date ? 1 : -1); });
+  var cut = Date.now() - 30 * 86400000, tot = 0, bv = {}, bc = {};
+  recs.forEach(function(x){ var r = x.r; if(new Date(r.date).getTime() > cut){ var n = parseFloat(r.trays) || 0; tot += n; bv[r.variety] = (bv[r.variety] || 0) + n; if(r.cause) bc[r.cause] = (bc[r.cause] || 0) + n; } });
+  function top(o){ var k = Object.keys(o).sort(function(a,b){ return o[b] - o[a]; }); return k.length ? k[0] : '—'; }
+  $('wStatTotal').textContent = r2(tot); $('wStatVar').textContent = top(bv); $('wStatCause').textContent = top(bc);
+  if(!recs.length){ $('wLogBody').innerHTML = '<tr><td colspan="7" class="empty">No wastage records yet.</td></tr>'; return; }
+  $('wLogBody').innerHTML = recs.slice(0, 150).map(function(x){ var r = x.r;
+    return '<tr><td>' + esc(r.date) + '</td><td><b>' + esc(r.variety) + '</b>' + (r.scanned ? '<br><span class="muted small"><i class="fas fa-barcode"></i> scanned</span>' : '') + '</td>' +
+      '<td class="n"><b style="color:var(--r)">' + r2(r.trays) + '</b></td><td><span class="pill r">' + esc(r.cause || '—') + '</span></td>' +
+      '<td class="small muted">' + (r.batchSowDate ? 'Sown ' + fmtDay(r.batchSowDate) : '—') + '</td><td class="small muted">' + esc(r.notes || '—') + '</td>' +
+      '<td><button class="act d" data-act="delW" data-id="' + x.k + '"><i class="fas fa-trash"></i></button></td></tr>';
+  }).join('');
+}
+function deleteWaste(id){
+  var r = wastage[id]; if(!r) return;
+  var codes = r.scannedTrayCodes || (r.scannedTrayCode ? [r.scannedTrayCode] : []);
+  if(!confirm('Delete this wastage record?\nThe ' + r2(r.trays) + ' tray(s) are given back to the batch' + (codes.length ? ' and the scanned trays go back to Growing.' : '.'))) return;
+  db.ref('wastage/' + uid + '/' + id).remove().then(function(){
+    var up = {};
+    codes.forEach(function(c){ var b = 'trays/' + uid + '/' + c + '/'; up[b+'status'] = 'Growing'; up[b+'wastedAt'] = null; up[b+'wastedByEntry'] = null; up[b+'wastedByFarmer'] = null; up[b+'cause'] = null; });
+    var p = Object.keys(up).length ? db.ref().update(up) : Promise.resolve();
+    return p.then(function(){
+      if(!r.batchId) return;
+      return bumpBatch(r.batchId, 'waste', -(parseFloat(r.trays) || 0)).then(function(){
+        var b = batches[r.batchId]; if(!b) return;
+        var f = {}; if(b.lastWastageEntry === id) f.lastWastageEntry = null; if(b.wastedByEntry === id) f.wastedByEntry = null;
+        if(Object.keys(f).length) return db.ref('batches/' + uid + '/' + r.batchId).update(f);
+      });
+    });
+  }).then(function(){ toast('Wastage record deleted'); }).catch(function(){ toast('Could not delete — check connection'); });
+}
+
+/* ---------- manual waste (trays with no label) ---------- */
+function fillVarietySelect(){
+  ['mVar','xVar'].forEach(function(id){
+    var s = $(id), cur = s.value;
+    s.innerHTML = '<option value="">Select variety…</option>' + sortedVarieties().map(function(n){ return '<option>' + esc(n) + '</option>'; }).join('');
+    if(cur) s.value = cur;
+  });
+}
+function fillBatchSelect(){
+  var v = $('mVar').value, s = $('mBatch'), list = [];
+  s.innerHTML = '<option value="">No batch (skip linking)</option>';
+  if(!v) return;
+  Object.keys(batches).forEach(function(id){ var b = batches[id]; if(b && b.item === v && b.status !== 'Harvested') list.push({ id: id, b: b }); });
+  list.sort(function(a,b){ return a.b.sowDate - b.b.sowDate; });
+  list.forEach(function(x){ var o = document.createElement('option'); o.value = x.id; o.textContent = 'Sown ' + fmtDay(x.b.sowDate) + ' — ' + batchLeft(x.b) + ' of ' + batchTotal(x.b) + ' left' + (x.b.batchCode ? ' — ' + x.b.batchCode : ''); s.appendChild(o); });
+  if(list.length === 1) s.value = list[0].id;
+}
+$('mVar').onchange = fillBatchSelect;
+function openManualWaste(){ $('mDate').value = today(); $('mTrays').value = ''; $('mNotes').value = ''; fillVarietySelect(); fillBatchSelect(); $('wasteModal').classList.remove('hidden'); }
+function saveManualWaste(){
+  var d = $('mDate').value, v = $('mVar').value, n = parseFloat($('mTrays').value), cause = $('mCause').value, notes = $('mNotes').value, bid = $('mBatch').value;
+  if(!d || !v || !(n > 0)){ toast('Fill date, variety and trays'); return; }
+  if(bid && batches[bid] && n > batchLeft(batches[bid]) + 0.001){ toast('Only ' + batchLeft(batches[bid]) + ' trays left in that batch'); return; }
+  var rec = { date: d, variety: v, trays: n, cause: cause, notes: notes, loggedBy: farmName, timestamp: firebase.database.ServerValue.TIMESTAMP };
+  if(bid){ rec.batchId = bid; if(batches[bid]) rec.batchSowDate = batches[bid].sowDate; }
+  var key = db.ref('wastage/' + uid).push().key;
+  db.ref('wastage/' + uid + '/' + key).set(rec).then(function(){
+    $('wasteModal').classList.add('hidden');
+    if(!bid) return;
+    return bumpBatch(bid, 'waste', n).then(function(info){ var f = {}; f[info && info.closed ? 'wastedByEntry' : 'lastWastageEntry'] = key; return db.ref('batches/' + uid + '/' + bid).update(f); });
+  }).then(function(){ toast('Wastage logged: ' + n + ' trays of ' + v); }).catch(function(){ toast('Could not save — check connection'); });
+}
+
+/* ---------- one click / input router ---------- */
+document.addEventListener('click', function(e){
+  var tab = e.target.closest('[data-tab]'); if(tab){ switchTab(tab.getAttribute('data-tab')); return; }
+  var el = e.target.closest('[data-act]'); if(!el) return;
+  var a = el.getAttribute('data-act'), code = el.getAttribute('data-code'), item = el.getAttribute('data-item'), id = el.getAttribute('data-id');
+  if(a === 'logout'){ hCam.stop(); wCam.stop(); auth.signOut(); }
+  else if(a === 'undo') undoTray(code);
+  else if(a === 'hMode') setHMode(el.getAttribute('data-mode'));
+  else if(a === 'saveManualHarvest') saveManualHarvest();
+  else if(a === 'saveGroup') saveGroup(item);
+  else if(a === 'editH') openEdit(id);
+  else if(a === 'delH') deleteHarvest(id);
+  else if(a === 'closeEdit') $('editModal').classList.add('hidden');
+  else if(a === 'saveEdit') saveEdit();
+  else if(a === 'wRemove'){ wasteList = wasteList.filter(function(p){ return p.code !== code; }); renderWasteList(); }
+  else if(a === 'wClear'){ wasteList = []; renderWasteList(); }
+  else if(a === 'wConfirm') confirmWaste();
+  else if(a === 'delW') deleteWaste(id);
+  else if(a === 'openManualWaste') openManualWaste();
+  else if(a === 'closeManualWaste') $('wasteModal').classList.add('hidden');
+  else if(a === 'saveManualWaste') saveManualWaste();
+});
+document.addEventListener('input', function(e){
+  var f = e.target.getAttribute && e.target.getAttribute('data-f'); if(!f) return;
+  var item = e.target.getAttribute('data-item'); if(!forms[item]) forms[item] = { date: today(), b: '', mb: '', mg: 15, ag: '' };
+  forms[item][f] = e.target.value; updatePreview(item);
+});
+document.addEventListener('change', function(e){
+  var t = e.target; if(!t.getAttribute || t.getAttribute('data-x') !== 'chk') return;
+  var q = t.closest('[data-xrow]').querySelector('[data-x="qty"]');
+  q.classList.toggle('hidden', !t.checked); q.value = t.checked ? q.max : ''; xRecalc();
+});
+document.addEventListener('input', function(e){ if(e.target.closest && e.target.closest('#hManualCard') && e.target.id !== 'xVar') xRecalc(); });
+window.addEventListener('unhandledrejection', function(e){ console.error(e.reason); });
+</script>
+</body>
+</html>
