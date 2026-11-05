@@ -10,6 +10,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js" defer></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -35,8 +36,8 @@ h3{font-size:16px;margin:0;font-weight:800}
 .top{position:sticky;top:0;z-index:20;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top,0)) 16px 10px}
 .top b{font-size:15px;display:block}.top small{opacity:.65;font-size:11.5px}
 .top button{background:rgba(255,255,255,.12);border:0;color:#fff;padding:8px 12px;border-radius:9px;font-size:12.5px;font-weight:600}
-.tabs{position:sticky;top:calc(52px + env(safe-area-inset-top,0));z-index:19;display:grid;grid-template-columns:1fr 1fr;background:#fff;border-bottom:1px solid var(--line)}
-.tabs button{border:0;background:none;padding:14px 8px;font-size:14.5px;font-weight:700;color:var(--mut);border-bottom:3px solid transparent}
+.tabs{position:sticky;top:calc(52px + env(safe-area-inset-top,0));z-index:19;display:grid;grid-template-columns:1fr 1fr 1fr;background:#fff;border-bottom:1px solid var(--line)}
+.tabs button{border:0;background:none;padding:14px 4px;font-size:13px;font-weight:700;color:var(--mut);border-bottom:3px solid transparent}
 .tabs button.on{color:var(--gd);border-bottom-color:var(--g)}
 .tabs button.w.on{color:var(--rd);border-bottom-color:var(--r)}
 .badge{display:inline-block;min-width:20px;padding:1px 6px;border-radius:99px;background:var(--a);color:#fff;font-size:11px;margin-left:6px}
@@ -89,6 +90,15 @@ td.n,th.n{text-align:center}
 .xrow .grow{flex:1;min-width:0}
 .xchk{width:22px;height:22px;flex:none;padding:0;accent-color:var(--g)}
 .xqty{width:84px;flex:none;padding:8px;text-align:center}
+.tcard{border-left:5px solid var(--b)}
+.lblscroll{max-height:42vh;overflow:auto;margin-top:12px;background:#f0f4f2;border-radius:10px;padding:8px}
+#lblList .tlabel{width:5cm;height:1.25cm;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4mm;border:.3mm solid #000;padding:.4mm .5mm;margin:0 0 4px;background:#fff;font-family:Arial,sans-serif;color:#000}
+#lblList .bc-wrap{flex:0 0 auto;height:7mm;width:43mm;display:flex;align-items:stretch;justify-content:center;overflow:hidden}
+#lblList .bc-wrap svg{width:100%;height:100%;display:block}
+#lblList .bc-pending{font-size:6px;color:#aaa}
+#lblList .tl-text{flex:0 0 auto;width:43mm;display:flex;flex-direction:row;align-items:center;justify-content:space-between;overflow:hidden}
+#lblList .tl-code{font-size:11px;font-weight:bold;line-height:1;white-space:nowrap}
+#lblList .tl-date{font-size:14px;font-weight:900;line-height:1;white-space:nowrap;letter-spacing:-.3px}
 .act.d{color:var(--r)}
 </style>
 </head>
@@ -117,11 +127,35 @@ td.n,th.n{text-align:center}
     <button data-act="logout">Log out</button>
   </header>
   <nav class="tabs">
+    <button data-tab="sow"><i class="fas fa-seedling"></i> Sowing <span id="sowBadge" class="badge hidden" style="background:var(--b)"></span></button>
     <button data-tab="harvest" class="on"><i class="fas fa-box-open"></i> Harvesting <span id="pendBadge" class="badge hidden"></span></button>
     <button data-tab="waste" class="w"><i class="fas fa-trash-alt"></i> Waste log</button>
   </nav>
 
   <main>
+    <!-- ================= SOWING ================= -->
+    <section id="tab-sow" class="hidden">
+      <div class="row between" style="margin-bottom:10px"><h2>Sowing tasks</h2><span class="muted small">from the manager's plan</span></div>
+      <div id="sowTasksWrap"></div>
+
+      <div class="card">
+        <h2>Manual sowing</h2>
+        <div class="muted small" style="margin-top:4px">Sow without a task. Seed stock is deducted and tray labels are made for scanning.</div>
+        <div class="grid2">
+          <div class="full"><label>Variety</label><select id="sVar"><option value="">Select variety…</option></select></div>
+          <div><label>Planned trays</label><input type="number" inputmode="numeric" id="sPlanned" min="1" placeholder="e.g. 20"></div>
+          <div><label>Actual trays sown</label><input type="number" inputmode="numeric" id="sActual" min="1" placeholder="same as planned"></div>
+        </div>
+        <button class="btn pri wide mt" id="sSave" data-act="manualSow"><i class="fas fa-seedling"></i> Sow &amp; make labels</button>
+      </div>
+
+      <div class="card">
+        <h2>Growing batches</h2>
+        <div class="muted small" style="margin-top:4px">Reprint tray labels for any batch that is still growing.</div>
+        <div id="growListWrap" class="mt"></div>
+      </div>
+    </section>
+
     <!-- ================= HARVESTING ================= -->
     <section id="tab-harvest">
       <div class="seg">
@@ -248,6 +282,22 @@ td.n,th.n{text-align:center}
   <div class="row mt"><button class="btn wide" data-act="closeManualWaste">Cancel</button><button class="btn red wide" data-act="saveManualWaste">Save record</button></div>
 </div></div>
 
+<!-- TRAY LABELS -->
+<div id="labelModal" class="modal hidden"><div class="in" style="max-width:560px">
+  <div class="row between"><h3>Tray labels</h3><button class="act" data-act="closeLabels"><i class="fas fa-times"></i></button></div>
+  <div class="row mt" style="flex-wrap:wrap">
+    <button class="btn" id="lblPrint" disabled style="flex:1">⏳ Generating barcodes…</button>
+  </div>
+  <div class="row mt" style="flex-wrap:wrap;font-size:12px;color:var(--mut)">
+    <label style="margin:0;display:flex;align-items:center;gap:6px">From # <input id="lblFrom" type="number" min="1" value="1" style="width:70px;padding:7px"></label>
+    <label style="margin:0;display:flex;align-items:center;gap:6px">To # <input id="lblTo" type="number" min="1" value="1" style="width:70px;padding:7px"></label>
+    <label style="margin:0;display:flex;align-items:center;gap:6px">Copies <input id="lblCopies" type="number" min="1" max="20" value="1" style="width:70px;padding:7px"></label>
+  </div>
+  <div id="lblSummary" class="small mt" style="font-weight:700;color:var(--gd)"></div>
+  <div class="muted small" style="margin-top:6px">Label 50 × 12.5 mm (TSC TE244): pick the printer, Margins <b>None</b>, Scale <b>100%</b>, Headers &amp; footers <b>off</b>.</div>
+  <div class="lblscroll"><div id="lblList"></div></div>
+</div></div>
+
 <div id="toast"></div>
 
 <script>
@@ -330,6 +380,7 @@ function startApp(){
   db.ref('batches/' + uid).on('value', function(s){ batches = s.val() || {}; renderAll(); if(!$('wasteModal').classList.contains('hidden')) fillBatchSelect(); });
   db.ref('harvests/' + uid).orderByKey().limitToLast(300).on('value', function(s){ harvests = s.val() || {}; renderHarvestLog(); renderHeader(); });
   db.ref('wastage/' + uid).orderByKey().limitToLast(300).on('value', function(s){ wastage = s.val() || {}; renderWasteLog(); });
+  db.ref('sowingTasks/' + uid).on('value', function(s){ sowTasks = s.val() || {}; renderSowing(); });
   loadPending();
   setTimeout(focusScan, 300);
 }
@@ -341,13 +392,14 @@ function loadPending(){
     renderPending();
   }).catch(function(){ toast('Could not load unfinished trays — check connection'); });
 }
-function renderAll(){ renderPending(); renderHarvestLog(); renderWasteList(); renderHeader(); if(hMode === 'manual' && !xAllocs().length) renderManualBatches(); }
+function renderAll(){ renderSowing(); renderPending(); renderHarvestLog(); renderWasteList(); renderHeader(); if(hMode === 'manual' && !xAllocs().length) renderManualBatches(); }
 
 /* ---------- TABS ---------- */
 var curTab = 'harvest';
 function switchTab(t){
   curTab = t;
   Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function(b){ b.classList.toggle('on', b.getAttribute('data-tab') === t); });
+  $('tab-sow').classList.toggle('hidden', t !== 'sow');
   $('tab-harvest').classList.toggle('hidden', t !== 'harvest');
   $('tab-waste').classList.toggle('hidden', t !== 'waste');
   hCam.stop(); wCam.stop();
@@ -814,7 +866,7 @@ function deleteWaste(id){
 
 /* ---------- manual waste (trays with no label) ---------- */
 function fillVarietySelect(){
-  ['mVar','xVar'].forEach(function(id){
+  ['mVar','xVar','sVar'].forEach(function(id){
     var s = $(id), cur = s.value;
     s.innerHTML = '<option value="">Select variety…</option>' + sortedVarieties().map(function(n){ return '<option>' + esc(n) + '</option>'; }).join('');
     if(cur) s.value = cur;
@@ -845,6 +897,180 @@ function saveManualWaste(){
   }).then(function(){ toast('Wastage logged: ' + n + ' trays of ' + v); }).catch(function(){ toast('Could not save — check connection'); });
 }
 
+/* ===================================================================
+   SOWING  (same batch / tray / seed-stock logic as the main app)
+   =================================================================== */
+var sowTasks = {}, lblList = [];
+function menuKeyByName(name){ var k = Object.keys(menu); for(var i=0;i<k.length;i++){ if(menu[k[i]] && menu[k[i]].name === name) return k[i]; } return null; }
+function newBatchCode(variety){
+  var used = {}; Object.keys(batches).forEach(function(id){ if(batches[id] && batches[id].batchCode) used[batches[id].batchCode] = 1; });
+  var c, n = 0;
+  do { c = String(variety).substring(0,3).toUpperCase() + '-' + Math.floor(1000 + Math.random() * 9000); n++; } while(used[c] && n < 50);
+  return c;
+}
+function makeTrays(batchId, batchCode, item, qty, sowTs, harvestTs){
+  var out = [];
+  for(var i = 1; i <= qty; i++){
+    var idx = i < 10 ? '0' + i : '' + i;
+    out.push({ trayCode: fbKey(String(batchCode).replace('-','') + 'T' + idx), batchId: batchId, batchCode: batchCode, item: item, trayNum: i, totalInBatch: qty,
+               sowDate: sowTs, harvestDateExpected: harvestTs, farmer: farmName || 'Manager', status: 'Growing' });
+  }
+  return out;
+}
+/* One call: batch + every tray record + shortfall log + task removal in a single atomic write, then seed stock. */
+function createBatch(variety, menuKey, planned, actual, reason, taskId){
+  var m = (menuKey && menu[menuKey]) || {}, gramsPer = parseFloat(m.gramsPerTray) || 0, growDays = parseInt(m.growTime) || 7;
+  var sowTs = Date.now(), hDate = sowTs + growDays * 86400000, code = newBatchCode(variety);
+  var bid = db.ref('batches/' + uid).push().key, up = {};
+  up['batches/' + uid + '/' + bid] = { item: variety, qty: actual, plannedQty: planned, sowDate: sowTs, harvestDate: hDate, status: 'Growing', batchCode: code,
+                                       createdBy: farmName, stockDeducted: true, sownBy: farmName || 'Manager' };
+  var trays = makeTrays(bid, code, variety, actual, sowTs, hDate);
+  trays.forEach(function(t){ var o = {}; Object.keys(t).forEach(function(k){ if(k !== 'trayCode') o[k] = t[k]; }); o.createdAt = firebase.database.ServerValue.TIMESTAMP; up['trays/' + uid + '/' + t.trayCode] = o; });
+  if(actual < planned){
+    var lk = db.ref('productionLogs/' + uid).push().key;
+    up['productionLogs/' + uid + '/' + lk] = { type: 'SOWING_SHORTFALL', date: firebase.database.ServerValue.TIMESTAMP, item: variety, planned: planned, actual: actual, lost: planned - actual, reason: reason };
+  }
+  if(taskId) up['sowingTasks/' + uid + '/' + taskId] = null;
+  return db.ref().update(up).then(function(){
+    var used = gramsPer * actual;
+    if(menuKey && used > 0){
+      return txn(db.ref('menus/' + uid + '/' + menuKey + '/currentSeedStockGrams'), function(cur){ return Math.max(0, (parseFloat(cur) || 0) - used); })
+        .catch(function(){ toast('Batch saved, but seed stock could not be updated'); });
+    }
+  }).then(function(){ return trays; });
+}
+
+function renderSowing(){
+  // keep any "actual trays" values already typed
+  var keep = {}; Array.prototype.forEach.call(document.querySelectorAll('[id^="sq_"]'), function(i){ keep[i.id] = i.value; });
+  var ids = Object.keys(sowTasks).sort(function(a,b){ return (sowTasks[a].createdAt || 0) - (sowTasks[b].createdAt || 0); });
+  var b = $('sowBadge'); b.textContent = ids.length; b.classList.toggle('hidden', !ids.length);
+  $('sowTasksWrap').innerHTML = !ids.length ? '<div class="card empty"><i class="fas fa-check-circle" style="font-size:26px;opacity:.25"></i><br>All caught up — no pending sowing tasks.</div>' :
+    ids.map(function(id){
+      var t = sowTasks[id], v = keep['sq_' + id] != null ? keep['sq_' + id] : t.qty;
+      return '<div class="card tcard"><div class="row between"><h3>' + esc(t.name) + '</h3><span class="pill" style="background:var(--bl);color:var(--b)">' + esc(t.qty) + ' trays planned</span></div>' +
+        '<div class="muted small" style="margin-top:6px">' + (t.grams ? esc(t.grams) + ' g seed' : '') + (t.growDays ? ' · ' + esc(t.growDays) + ' days to grow' : '') + '</div>' +
+        (t.instructions ? '<div class="small" style="margin-top:6px"><i class="fas fa-circle-info" style="color:var(--b)"></i> ' + esc(t.instructions) + '</div>' : '') +
+        '<div class="row mt"><div style="width:110px;flex:none"><label>Actual trays</label><input type="number" inputmode="numeric" min="1" id="sq_' + id + '" value="' + esc(v) + '"></div>' +
+        '<button class="btn pri wide" style="align-self:flex-end" data-act="confirmSow" data-id="' + id + '"><i class="fas fa-check"></i> Confirm sowing</button></div></div>';
+    }).join('');
+  var g = Object.keys(batches).map(function(id){ return { id: id, b: batches[id] }; }).filter(function(x){ return x.b && x.b.status === 'Growing'; });
+  g.sort(function(a,c){ return (c.b.sowDate - a.b.sowDate) || String(a.b.item).localeCompare(String(c.b.item)); });
+  $('growListWrap').innerHTML = !g.length ? '<div class="empty">No trays currently growing.</div>' : g.map(function(x){ var bt = x.b;
+    return '<div class="xrow" style="justify-content:space-between"><div class="grow"><b>' + esc(bt.item) + '</b> <span class="muted small">(' + esc(bt.batchCode || '') + ')</span>' +
+      '<div class="small muted">' + batchLeft(bt) + ' / ' + batchTotal(bt) + ' trays left · Sown ' + fmtDay(bt.sowDate) + ' · Harvest ' + fmtDay(bt.harvestDate) + '</div></div>' +
+      '<button class="btn sm" data-act="reprint" data-id="' + x.id + '"><i class="fas fa-print"></i> Labels</button></div>'; }).join('');
+}
+
+function confirmSow(taskId){
+  var t = sowTasks[taskId]; if(!t || busy['s' + taskId]) return;
+  var actual = parseInt($('sq_' + taskId).value);
+  if(!(actual > 0)){ toast('Enter the actual trays sown'); return; }
+  var mk = t.menuKey || t.key; if(!menu[mk]) mk = menuKeyByName(t.name);
+  if(!mk){ toast('Variety not found in the menu'); return; }
+  var planned = parseInt(t.qty) || actual;
+  busy['s' + taskId] = true;
+  createBatch(t.name, mk, planned, actual, 'Confirmed fewer trays', taskId).then(function(trays){
+    toast('✅ Sowing confirmed — ' + plural(actual, 'tray') + ' of ' + t.name); openLabels(trays);
+  }).catch(function(){ toast('Could not save the sowing — check your connection'); }).then(function(){ delete busy['s' + taskId]; });
+}
+function manualSow(){
+  var v = $('sVar').value, planned = parseInt($('sPlanned').value), actual = parseInt($('sActual').value);
+  if(!v){ toast('Choose a variety'); return; }
+  if(!(planned > 0)){ toast('Enter planned trays'); return; }
+  if(isNaN(actual)) actual = planned;
+  if(!(actual > 0)){ toast('Invalid actual trays'); return; }
+  var btn = $('sSave'); btn.disabled = true;
+  createBatch(v, menuKeyByName(v), planned, actual, 'Manual Entry', null).then(function(trays){
+    $('sPlanned').value = ''; $('sActual').value = '';
+    toast('✅ Batch added — ' + plural(actual, 'tray') + ' of ' + v); openLabels(trays);
+  }).catch(function(){ toast('Could not save the sowing — check your connection'); }).then(function(){ btn.disabled = false; });
+}
+
+/* trays of a batch for reprinting (created now if the batch has none yet) */
+function getBatchTrays(batchId){
+  return db.ref('trays/' + uid).orderByChild('batchId').equalTo(batchId).once('value').then(function(snap){
+    var all = snap.val() || {}, list = [];
+    Object.keys(all).forEach(function(k){ var t = all[k]; t.trayCode = k; list.push(t); });
+    if(list.length){ list.sort(function(a,b){ return (a.trayNum || 0) - (b.trayNum || 0); }); return list; }
+    var bt = batches[batchId]; if(!bt) return [];
+    var remaining = batchTotal(bt) - (bt.harvestedTrays || 0) - (bt.wastedTrays || 0); remaining = Math.floor(remaining);
+    if(remaining <= 0) return [];
+    var trays = makeTrays(batchId, bt.batchCode || ('B' + String(batchId).slice(-5)), bt.item, remaining, bt.sowDate, bt.harvestDate), up = {};
+    trays.forEach(function(t){ var o = {}; Object.keys(t).forEach(function(k){ if(k !== 'trayCode') o[k] = t[k]; }); o.totalInBatch = batchTotal(bt); o.createdAt = firebase.database.ServerValue.TIMESTAMP; up['trays/' + uid + '/' + t.trayCode] = o; });
+    return db.ref().update(up).then(function(){ return trays; });
+  });
+}
+function reprint(batchId){
+  getBatchTrays(batchId).then(function(list){ if(!list.length){ toast('No trays left in this batch to label'); return; } openLabels(list); })
+    .catch(function(){ toast('Could not prepare labels — check connection'); });
+}
+
+/* ---------- tray labels: 50 x 12.5 mm, CODE128, TSC TE244 ---------- */
+function lblDate(t){ var d = new Date(t && t.sowDate); if(!t || !t.sowDate || isNaN(d.getTime())) return ''; return pad(d.getDate()) + '/' + pad(d.getMonth() + 1); }
+function lblText(code){ var shown = String(code || '').replace(/T(\d+)(x*)$/, 'T-$1$2'); return '<div class="tl-code"' + (shown.length > 12 ? ' style="font-size:9px"' : '') + '>' + esc(shown) + '</div>'; }
+function openLabels(trays){
+  if(!trays || !trays.length) return;
+  lblList = trays;
+  $('lblList').innerHTML = trays.map(function(t){ return '<div class="tlabel"><div class="bc-wrap" id="trbc-' + t.trayCode + '"><span class="bc-pending">…</span></div><div class="tl-text">' + lblText(t.trayCode) + '<div class="tl-date">' + lblDate(t) + '</div></div></div>'; }).join('');
+  $('lblFrom').value = 1; $('lblTo').value = trays.length; $('lblFrom').max = $('lblTo').max = trays.length; $('lblCopies').value = 1;
+  var pb = $('lblPrint'); pb.disabled = true; pb.textContent = '⏳ Generating barcodes…'; pb.className = 'btn';
+  $('labelModal').classList.remove('hidden'); lblSummary();
+  renderBarcodes(trays.map(function(t){ return t.trayCode; }), 0);
+}
+function renderBarcodes(codes, attempt){
+  var pb = $('lblPrint');
+  if(typeof JsBarcode === 'undefined'){
+    if(attempt > 25){ pb.disabled = true; pb.textContent = '⚠️ Barcode library failed to load — check internet'; return; }
+    setTimeout(function(){ renderBarcodes(codes, attempt + 1); }, 200); return;
+  }
+  codes.forEach(function(code){
+    var t = $('trbc-' + code); if(!t || t.getAttribute('data-rendered') === '1') return;
+    t.innerHTML = '';
+    try{
+      var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); t.appendChild(svg);
+      JsBarcode(svg, code, { format: 'CODE128', width: 2, height: 60, displayValue: false, margin: 0 });
+      var bw = parseFloat(svg.getAttribute('width')), bh = parseFloat(svg.getAttribute('height'));
+      if(bw && bh) svg.setAttribute('viewBox', '0 0 ' + bw + ' ' + bh);
+      svg.setAttribute('preserveAspectRatio', 'none'); svg.removeAttribute('width'); svg.removeAttribute('height');
+    }catch(e){ t.innerHTML = '<span style="font-size:6px;color:#dc2626">err</span>'; }
+    t.setAttribute('data-rendered', '1');
+  });
+  pb.disabled = false; pb.className = 'btn pri'; pb.textContent = '🖨️ Print labels';
+}
+function lblSelection(){
+  var n = lblList.length, f = parseInt($('lblFrom').value, 10), t = parseInt($('lblTo').value, 10);
+  if(isNaN(f) || f < 1) f = 1; if(isNaN(t) || t > n) t = n; if(f > t){ var x = f; f = t; t = x; }
+  return lblList.slice(f - 1, t);
+}
+function lblCopies(){ var c = parseInt($('lblCopies').value, 10); if(isNaN(c) || c < 1) c = 1; return c > 20 ? 20 : c; }
+function lblSummary(){ var n = lblSelection().length, c = lblCopies(); $('lblSummary').textContent = plural(n, 'label') + (c > 1 ? ' × ' + c + ' copies = ' + (n * c) + ' to print' : ' to print'); }
+function printLabels(){
+  var sel = lblSelection(), copies = lblCopies(), labels = '';
+  if(!sel.length){ toast('No labels selected'); return; }
+  for(var i = 0; i < sel.length; i++){
+    var bc = $('trbc-' + sel[i].trayCode);
+    if(!bc || bc.getAttribute('data-rendered') !== '1'){ toast('Barcodes are still generating — try again'); return; }
+    var one = '<div class="tlabel"><div class="bc-wrap">' + bc.innerHTML + '</div><div class="tl-text">' + lblText(sel[i].trayCode) + '<div class="tl-date">' + lblDate(sel[i]) + '</div></div></div>';
+    for(var c = 0; c < copies; c++) labels += one;
+  }
+  var css = '@page{size:50mm 12.5mm;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;font-family:Arial,sans-serif;color:#000}' +
+    '.tlabel{width:50mm;height:12.5mm;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.4mm;border:0.3mm solid #000;padding:0.4mm 0.5mm;overflow:hidden;page-break-after:always;break-after:page}' +
+    '.tlabel:last-child{page-break-after:auto;break-after:auto}' +
+    '.bc-wrap{flex:0 0 auto;height:7mm;width:43mm;display:flex;align-items:stretch;justify-content:center;overflow:hidden}.bc-wrap svg{width:100%;height:100%;display:block}' +
+    '.tl-text{flex:0 0 auto;width:43mm;display:flex;flex-direction:row;align-items:center;justify-content:space-between;overflow:hidden}' +
+    '.tl-code{font-size:11px;font-weight:bold;line-height:1;white-space:nowrap}.tl-date{font-size:14px;font-weight:900;line-height:1;white-space:nowrap;letter-spacing:-0.3px}';
+  var old = $('trayPrintFrame'); if(old && old.parentNode) old.parentNode.removeChild(old);
+  var f = document.createElement('iframe'); f.id = 'trayPrintFrame'; f.style.cssText = 'position:fixed;left:-10000px;top:0;width:60mm;height:25mm;border:0;';
+  document.body.appendChild(f);
+  var d = f.contentWindow.document; d.open();
+  d.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Tray Labels</title><style>' + css + '</style></head><body>' + labels + '</body></html>'); d.close();
+  setTimeout(function(){
+    try{ f.contentWindow.onafterprint = function(){ setTimeout(function(){ if(f.parentNode) f.parentNode.removeChild(f); }, 500); }; f.contentWindow.focus(); f.contentWindow.print(); }
+    catch(e){ toast('Could not open the print dialog'); }
+  }, 300);
+}
+
 /* ---------- one click / input router ---------- */
 document.addEventListener('click', function(e){
   var tab = e.target.closest('[data-tab]'); if(tab){ switchTab(tab.getAttribute('data-tab')); return; }
@@ -852,6 +1078,10 @@ document.addEventListener('click', function(e){
   var a = el.getAttribute('data-act'), code = el.getAttribute('data-code'), item = el.getAttribute('data-item'), id = el.getAttribute('data-id');
   if(a === 'logout'){ hCam.stop(); wCam.stop(); auth.signOut(); }
   else if(a === 'undo') undoTray(code);
+  else if(a === 'confirmSow') confirmSow(id);
+  else if(a === 'manualSow') manualSow();
+  else if(a === 'reprint') reprint(id);
+  else if(a === 'closeLabels') $('labelModal').classList.add('hidden');
   else if(a === 'hMode') setHMode(el.getAttribute('data-mode'));
   else if(a === 'saveManualHarvest') saveManualHarvest();
   else if(a === 'saveGroup') saveGroup(item);
@@ -878,6 +1108,8 @@ document.addEventListener('change', function(e){
   q.classList.toggle('hidden', !t.checked); q.value = t.checked ? q.max : ''; xRecalc();
 });
 document.addEventListener('input', function(e){ if(e.target.closest && e.target.closest('#hManualCard') && e.target.id !== 'xVar') xRecalc(); });
+$('lblPrint').onclick = printLabels;
+document.addEventListener('input', function(e){ if(e.target.closest && e.target.closest('#labelModal')) lblSummary(); });
 window.addEventListener('unhandledrejection', function(e){ console.error(e.reason); });
 </script>
 </body>
